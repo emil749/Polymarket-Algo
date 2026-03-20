@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polymarket Live Dashboard</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; background: #0b0d14; color: #e2e8f0; min-height: 100vh; }
+
+/* Header */
+.header { background: #12151f; border-bottom: 1px solid #1e2235; padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo h1 { font-size: 18px; font-weight: 700; color: #fff; }
+.logo h1 span { color: #6366f1; }
+.header-right { display: flex; align-items: center; gap: 16px; }
+.source-badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+.source-live  { background: #22c55e22; color: #22c55e; border: 1px solid #22c55e55; }
+.source-demo  { background: #f59e0b22; color: #f59e0b; border: 1px solid #f59e0b55; }
+.update-info  { font-size: 12px; color: #475569; }
+.update-info span { color: #94a3b8; }
+
+/* Countdown */
+.countdown-bar { height: 3px; background: #1e2235; position: relative; overflow: hidden; }
+.countdown-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #a78bfa); transition: width 1s linear; }
+
+/* Container */
+.container { max-width: 1280px; margin: 0 auto; padding: 24px 20px; }
+
+/* Stats */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+.stat { background: #12151f; border: 1px solid #1e2235; border-radius: 12px; padding: 18px 20px; position: relative; overflow: hidden; }
+.stat::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+.stat.blue::before  { background: #6366f1; }
+.stat.green::before { background: #22c55e; }
+.stat.purple::before{ background: #a78bfa; }
+.stat.amber::before { background: #f59e0b; }
+.stat .lbl { font-size: 11px; color: #475569; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 10px; }
+.stat .val { font-size: 26px; font-weight: 800; color: #fff; line-height: 1; }
+.stat.green .val  { color: #22c55e; }
+.stat.purple .val { color: #a78bfa; }
+.stat.amber .val  { color: #f59e0b; }
+.stat .sub { font-size: 11px; color: #334155; margin-top: 6px; }
+
+/* Controls */
+.controls { background: #12151f; border: 1px solid #1e2235; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
+.ctrl { display: flex; align-items: center; gap: 10px; }
+.ctrl label { font-size: 12px; color: #64748b; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.4px; }
+.ctrl input[type="range"] { accent-color: #6366f1; width: 120px; cursor: pointer; }
+.ctrl .val-display { font-size: 13px; font-weight: 700; color: #a78bfa; min-width: 42px; }
+.ctrl input[type="number"] { background: #0b0d14; border: 1px solid #2d3148; border-radius: 6px; color: #a78bfa; padding: 5px 10px; font-size: 14px; font-weight: 700; width: 90px; }
+.divider { width: 1px; height: 24px; background: #1e2235; }
+
+/* Tabs */
+.tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+.tab { padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; color: #475569; border: 1px solid transparent; }
+.tab.active { background: #6366f1; color: #fff; border-color: #6366f1; }
+.tab:not(.active):hover { background: #1a1d27; color: #94a3b8; }
+.tab-count { display: inline-block; background: #1e2235; border-radius: 10px; padding: 1px 7px; font-size: 11px; margin-left: 4px; }
+.tab.active .tab-count { background: rgba(255,255,255,0.2); }
+
+/* Table */
+.table-wrap { background: #12151f; border: 1px solid #1e2235; border-radius: 12px; overflow: hidden; }
+.t-head { display: grid; grid-template-columns: 2fr 80px 80px 90px 90px 90px; padding: 12px 20px; background: #0e1019; border-bottom: 1px solid #1e2235; }
+.t-head span { font-size: 10px; color: #334155; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 700; }
+.t-head span:not(:first-child) { text-align: center; }
+
+.mrow { display: grid; grid-template-columns: 2fr 80px 80px 90px 90px 90px; padding: 13px 20px; border-bottom: 1px solid #0f1117; align-items: center; transition: background .1s; cursor: pointer; }
+.mrow:hover { background: #161926; }
+.mrow:last-child { border-bottom: none; }
+.mrow .q { font-size: 13px; color: #94a3b8; line-height: 1.4; }
+.mrow .q .days { font-size: 11px; color: #334155; margin-top: 2px; }
+.cell { text-align: center; }
+
+/* Price pill */
+.pill { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 800; }
+.pill-h { background: #22c55e1a; color: #22c55e; border: 1px solid #22c55e33; }
+.pill-m { background: #f59e0b1a; color: #f59e0b; border: 1px solid #f59e0b33; }
+.pill-l { background: #ef44441a; color: #ef4444; border: 1px solid #ef444433; }
+
+/* Edge */
+.edge-wrap { display: flex; align-items: center; justify-content: center; gap: 5px; }
+.ebar { height: 5px; border-radius: 3px; }
+.ep { background: #22c55e; } .en { background: #ef4444; }
+.ev { font-size: 12px; font-weight: 800; }
+.evp { color: #22c55e; } .evn { color: #ef4444; } .ev0 { color: #334155; }
+
+/* Direction */
+.dy  { color: #22c55e; font-weight: 800; font-size: 12px; }
+.dn  { color: #ef4444; font-weight: 800; font-size: 12px; }
+.d0  { color: #334155; font-size: 12px; }
+
+/* Bet */
+.bet-v { font-size: 13px; font-weight: 800; color: #a78bfa; }
+.bet-0 { color: #1e2235; font-size: 12px; }
+
+/* Kelly Calculator */
+.calc { background: #12151f; border: 1px solid #1e2235; border-radius: 12px; padding: 22px; margin-top: 20px; }
+.calc h3 { font-size: 15px; font-weight: 700; margin-bottom: 18px; color: #fff; }
+.calc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.ci { display: flex; flex-direction: column; gap: 6px; }
+.ci label { font-size: 11px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; }
+.ci input[type="range"] { accent-color: #6366f1; width: 100%; }
+.ci .cv { font-size: 15px; font-weight: 800; color: #6366f1; }
+.ci input[type="number"] { background: #0b0d14; border: 1px solid #2d3148; border-radius: 8px; color: #e2e8f0; padding: 10px 14px; font-size: 15px; width: 100%; }
+.cr { background: #0b0d14; border: 1px solid #1e2235; border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.cr-row { display: flex; justify-content: space-between; align-items: center; }
+.cr-lbl { font-size: 12px; color: #475569; }
+.cr-val { font-size: 15px; font-weight: 800; }
+.cr-divider { border: none; border-top: 1px solid #1e2235; }
+
+/* Loading / empty */
+.loading { text-align: center; padding: 60px; color: #334155; }
+.spin { display: inline-block; width: 24px; height: 24px; border: 2px solid #1e2235; border-top-color: #6366f1; border-radius: 50%; animation: spin .7s linear infinite; margin-bottom: 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.empty { text-align: center; padding: 50px; color: #334155; font-size: 14px; }
+.footer { text-align: center; color: #1e2235; font-size: 12px; margin-top: 28px; padding-bottom: 20px; }
+
+@media (max-width: 768px) {
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .t-head, .mrow { grid-template-columns: 1fr 70px 70px; }
+  .t-head span:nth-child(n+4), .mrow .cell:nth-child(n+4) { display: none; }
+  .calc-grid { grid-template-columns: 1fr; }
+  .controls { gap: 12px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <h1>🎯 <span>Polymarket</span> Live</h1>
+  </div>
+  <div class="header-right">
+    <div class="update-info">Letztes Update: <span id="last-update">—</span> · Nächstes: <span id="next-update">—</span></div>
+    <div class="source-badge source-demo" id="source-badge">Demo</div>
+  </div>
+</div>
+
+<div class="countdown-bar"><div class="countdown-fill" id="countdown-fill" style="width:100%"></div></div>
+
+<div class="container">
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat blue">
+      <div class="lbl">Märkte analysiert</div>
+      <div class="val" id="s-markets">—</div>
+      <div class="sub">nach Filterung</div>
+    </div>
+    <div class="stat green">
+      <div class="lbl">Trades mit Edge</div>
+      <div class="val" id="s-trades">—</div>
+      <div class="sub" id="s-edge-sub">≥ 5% Edge</div>
+    </div>
+    <div class="stat purple">
+      <div class="lbl">Gesamt-Risiko</div>
+      <div class="val" id="s-risk">—</div>
+      <div class="sub" id="s-risk-pct">von Bankroll</div>
+    </div>
+    <div class="stat amber">
+      <div class="lbl">Erw. Gewinn</div>
+      <div class="val" id="s-profit">—</div>
+      <div class="sub">bei Treffer</div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="ctrl">
+      <label>Bankroll $</label>
+      <input type="number" id="c-bankroll" value="1000" min="100" step="100" oninput="recompute()">
+    </div>
+    <div class="divider"></div>
+    <div class="ctrl">
+      <label>Min Edge</label>
+      <input type="range" id="c-edge" min="1" max="25" value="5" oninput="recompute()">
+      <span class="val-display" id="c-edge-lbl">5%</span>
+    </div>
+    <div class="divider"></div>
+    <div class="ctrl">
+      <label>Kelly %</label>
+      <input type="range" id="c-kelly" min="10" max="100" value="25" step="5" oninput="recompute()">
+      <span class="val-display" id="c-kelly-lbl">25%</span>
+    </div>
+    <div class="divider"></div>
+    <div class="ctrl">
+      <label>Anzeigen</label>
+      <select id="c-show" onchange="renderTable()" style="background:#0b0d14;border:1px solid #2d3148;border-radius:6px;color:#e2e8f0;padding:6px 10px;font-size:13px;cursor:pointer;">
+        <option value="all">Alle Märkte</option>
+        <option value="trades">Nur Trades</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('trades')" id="tab-trades">🔥 Top Trades <span class="tab-count" id="tc-trades">0</span></div>
+    <div class="tab" onclick="switchTab('all')" id="tab-all">📊 Alle Märkte <span class="tab-count" id="tc-all">0</span></div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <div class="t-head">
+      <span>Markt / Frage</span>
+      <span>Markt</span>
+      <span>Modell</span>
+      <span>Edge</span>
+      <span>Richtung</span>
+      <span>Einsatz $</span>
+    </div>
+    <div id="market-list">
+      <div class="loading"><div class="spin"></div><br>Verbinde mit Server...</div>
+    </div>
+  </div>
+
+  <!-- Kelly Calculator -->
+  <div class="calc">
+    <h3>🧮 Kelly Criterion Rechner</h3>
+    <div class="calc-grid">
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="ci">
+          <label>Meine Wahrscheinlichkeit (Modell)</label>
+          <input type="range" id="kc-model" min="1" max="99" value="68" oninput="calcKelly()">
+          <span class="cv" id="kc-model-lbl">68%</span>
+        </div>
+        <div class="ci">
+          <label>Markt-Preis</label>
+          <input type="range" id="kc-market" min="1" max="99" value="55" oninput="calcKelly()">
+          <span class="cv" id="kc-market-lbl" style="color:#94a3b8;">55%</span>
+        </div>
+        <div class="ci">
+          <label>Bankroll ($)</label>
+          <input type="number" id="kc-bankroll" value="1000" min="100" oninput="calcKelly()">
+        </div>
+        <div class="ci">
+          <label>Fractional Kelly</label>
+          <input type="range" id="kc-frac" min="10" max="100" value="25" step="5" oninput="calcKelly()">
+          <span class="cv" id="kc-frac-lbl" style="color:#94a3b8;">25%</span>
+        </div>
+      </div>
+      <div class="cr" id="kelly-result"></div>
+    </div>
+  </div>
+
+  <div class="footer">⚠️ Kein Finanzberatung · Starte immer mit Paper-Trading · Demo-Daten wenn API nicht erreichbar</div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────
+let allMarkets  = [];
+let activeTab   = 'trades';
+let countdownMs = 5 * 60 * 1000;
+let lastFetch   = Date.now();
+let countdownInterval;
+
+// ── Fetch vom Server ──────────────────────────────────────
+async function fetchState() {
+  try {
+    const r = await fetch('/api/state');
+    if (!r.ok) throw new Error('Server nicht erreichbar');
+    const data = await r.json();
+    allMarkets = data.markets || [];
+    updateHeader(data);
+    recompute();
+    lastFetch   = Date.now();
+    countdownMs = 5 * 60 * 1000;
+  } catch (e) {
+    console.warn('Server nicht erreichbar, nutze Demo-Daten');
+    allMarkets = buildDemoData();
+    recompute();
+  }
+}
+
+// ── Demo-Daten (Fallback wenn Server nicht läuft) ─────────
+function buildDemoData() {
+  const seed = (s) => { let x = s; return () => { x = (x * 1664525 + 1013904223) & 0xffffffff; return (x >>> 0) / 0xffffffff; }; };
+  const topics = [
+    "Will the Fed cut rates in Q2 2026?","Will Bitcoin reach $100k by June 2026?",
+    "Will Germany form a stable coalition by July?","Will AI surpass human performance in coding benchmark?",
+    "Will Elon Musk sell Tesla shares this quarter?","Will inflation drop below 2% in the EU?",
+    "Will the next iPhone include a foldable display?","Will there be a major bank failure in 2026?",
+    "Will autonomous vehicles launch in 10 cities by 2026?","Will the S&P500 hit 7000 by December 2026?",
+    "Will NATO expand membership in 2026?","Will OpenAI release GPT-5 before June 2026?",
+    "Will there be a US recession in 2026?","Will oil prices exceed $100/barrel in 2026?",
+  ];
+  return topics.map((q, i) => {
+    const r = seed(i * 137 + 99);
+    const mp  = Math.round((0.1 + r() * 0.8) * 100) / 100;
+    const noise = (r() - 0.5) * 0.14;
+    let adj = mp < 0.2 ? mp * 0.78 : mp > 0.8 ? mp + (1-mp)*0.1 : mp;
+    const modelP = Math.max(0.03, Math.min(0.97, adj + noise));
+    return { id: i, question: q, market_p: mp, model_p: Math.round(modelP*100)/100,
+             volume: Math.round(1000 + r()*49000), liquidity: Math.round(2000 + r()*20000),
+             days_left: Math.round(7 + r()*173) };
+  });
+}
+
+// ── Header & Source Badge ─────────────────────────────────
+function updateHeader(data) {
+  document.getElementById('last-update').textContent = data.last_update || '—';
+  document.getElementById('next-update').textContent = data.next_update || '—';
+  const badge = document.getElementById('source-badge');
+  if (data.source === 'live') {
+    badge.textContent = '● Live';
+    badge.className = 'source-badge source-live';
+  } else {
+    badge.textContent = '● Demo';
+    badge.className = 'source-badge source-demo';
+  }
+}
+
+// ── Recompute mit aktuellen Slider-Werten ─────────────────
+function recompute() {
+  const bankroll = parseFloat(document.getElementById('c-bankroll').value) || 1000;
+  const minEdge  = parseInt(document.getElementById('c-edge').value) / 100;
+  const kellyF   = parseInt(document.getElementById('c-kelly').value) / 100;
+
+  document.getElementById('c-edge-lbl').textContent  = (minEdge*100).toFixed(0) + '%';
+  document.getElementById('c-kelly-lbl').textContent = (kellyF*100).toFixed(0) + '%';
+  document.getElementById('s-edge-sub').textContent  = '≥ ' + (minEdge*100).toFixed(0) + '% Edge';
+
+  const computed = allMarkets.map(m => {
+    const edge = m.model_p - m.market_p;
+    let bet = 0, direction = null;
+    if (Math.abs(edge) >= minEdge) {
+      let b, p, q;
+      if (edge > 0) { b = (1-m.market_p)/(m.market_p+1e-9); p = m.model_p; q = 1-p; direction = 'YES'; }
+      else          { b = m.market_p/(1-m.market_p+1e-9); p = 1-m.model_p; q = m.model_p; direction = 'NO'; }
+      const kf = Math.max(0, (b*p - q)/(b+1e-9));
+      bet = Math.min(kellyF * kf * bankroll, 0.05 * bankroll);
+      bet = Math.max(0, Math.round(bet * 100) / 100);
+    }
+    const expP = bet > 0 ? bet * Math.abs(edge) / (m.market_p + 1e-9) : 0;
+    return { ...m, edge, bet, direction, exp_profit: expP, has_edge: bet > 0 };
+  });
+
+  const trades = computed.filter(r => r.has_edge);
+  const totalRisk   = trades.reduce((s,r) => s + r.bet, 0);
+  const totalProfit = trades.reduce((s,r) => s + r.exp_profit, 0);
+
+  document.getElementById('s-markets').textContent = computed.length;
+  document.getElementById('s-trades').textContent  = trades.length;
+  document.getElementById('s-risk').textContent    = '$' + Math.round(totalRisk);
+  document.getElementById('s-risk-pct').textContent = (totalRisk/bankroll*100).toFixed(1) + '% von $' + bankroll.toLocaleString();
+  document.getElementById('s-profit').textContent  = '$' + Math.round(totalProfit);
+  document.getElementById('tc-trades').textContent = trades.length;
+  document.getElementById('tc-all').textContent    = computed.length;
+
+  computed.sort((a,b) => Math.abs(b.edge) - Math.abs(a.edge));
+  window._computed = computed;
+  renderTable();
+}
+
+// ── Tabelle rendern ───────────────────────────────────────
+function renderTable() {
+  const show   = document.getElementById('c-show').value;
+  const data   = window._computed || [];
+  const rows   = activeTab === 'trades' ? data.filter(r => r.has_edge) : data;
+  const list   = document.getElementById('market-list');
+
+  if (!rows.length) {
+    list.innerHTML = '<div class="empty">Keine Märkte · Min-Edge reduzieren oder Server starten</div>';
+    return;
+  }
+
+  function pillCls(p) { return p >= 0.65 ? 'pill-h' : p >= 0.35 ? 'pill-m' : 'pill-l'; }
+
+  list.innerHTML = rows.map(row => {
+    const ew = Math.min(Math.round(Math.abs(row.edge) * 240), 60);
+    const ec = row.edge >= 0 ? 'p' : 'n';
+    const eSign = row.edge >= 0 ? '+' : '';
+    const dirHtml = row.direction === 'YES' ? `<span class="dy">▲ YES</span>`
+                  : row.direction === 'NO'  ? `<span class="dn">▼ NO</span>`
+                  : `<span class="d0">—</span>`;
+    const betHtml = row.bet > 0
+      ? `<span class="bet-v">$${row.bet.toFixed(2)}</span>`
+      : `<span class="bet-0">—</span>`;
+    return `<div class="mrow">
+      <div class="q">${row.question}<div class="days">📅 ${row.days_left}d · Vol $${(row.volume||0).toLocaleString()}</div></div>
+      <div class="cell"><span class="pill ${pillCls(row.market_p)}">${(row.market_p*100).toFixed(0)}%</span></div>
+      <div class="cell" style="font-weight:800;font-size:13px;color:#e2e8f0">${(row.model_p*100).toFixed(0)}%</div>
+      <div class="cell">
+        <div class="edge-wrap">
+          <div class="ebar e${ec}" style="width:${ew}px"></div>
+          <span class="ev ev${ec}">${eSign}${(row.edge*100).toFixed(0)}%</span>
+        </div>
+      </div>
+      <div class="cell">${dirHtml}</div>
+      <div class="cell">${betHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Tab switcher ──────────────────────────────────────────
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('tab-trades').classList.toggle('active', tab === 'trades');
+  document.getElementById('tab-all').classList.toggle('active', tab === 'all');
+  renderTable();
+}
+
+// ── Countdown-Bar ─────────────────────────────────────────
+function startCountdown() {
+  clearInterval(countdownInterval);
+  const total = 5 * 60 * 1000;
+  countdownInterval = setInterval(() => {
+    const elapsed = Date.now() - lastFetch;
+    const pct = Math.max(0, 100 - (elapsed / total * 100));
+    document.getElementById('countdown-fill').style.width = pct + '%';
+    if (pct <= 0) fetchState();
+  }, 1000);
+}
+
+// ── Kelly Calculator ──────────────────────────────────────
+function calcKelly() {
+  const mp  = parseInt(document.getElementById('kc-model').value) / 100;
+  const mkp = parseInt(document.getElementById('kc-market').value) / 100;
+  const br  = parseFloat(document.getElementById('kc-bankroll').value) || 1000;
+  const kf  = parseInt(document.getElementById('kc-frac').value) / 100;
+
+  document.getElementById('kc-model-lbl').textContent  = (mp*100).toFixed(0) + '%';
+  document.getElementById('kc-market-lbl').textContent = (mkp*100).toFixed(0) + '%';
+  document.getElementById('kc-frac-lbl').textContent   = (kf*100).toFixed(0) + '%';
+
+  const edge = mp - mkp;
+  let b, p, q, dir;
+  if (edge >= 0) { b = (1-mkp)/(mkp+1e-9); p = mp; q = 1-mp; dir = '▲ YES'; }
+  else           { b = mkp/(1-mkp+1e-9);   p = 1-mp; q = mp; dir = '▼ NO'; }
+  const kFull = Math.max(0, (b*p - q)/(b+1e-9));
+  const bet   = Math.min(kf * kFull * br, 0.05 * br);
+  const expG  = bet > 0 ? bet * b * p - bet * q : 0;
+  const roi   = bet > 0 ? expG / bet * 100 : 0;
+  const ec    = edge >= 0 ? '#22c55e' : '#ef4444';
+  const bc    = bet > 0 ? '#a78bfa' : '#475569';
+
+  document.getElementById('kelly-result').innerHTML = `
+    <div class="cr-row"><span class="cr-lbl">Edge</span><span class="cr-val" style="color:${ec}">${edge>=0?'+':''}${(edge*100).toFixed(1)}%</span></div>
+    <div class="cr-row"><span class="cr-lbl">Richtung</span><span class="cr-val">${dir}</span></div>
+    <hr class="cr-divider">
+    <div class="cr-row"><span class="cr-lbl">Voller Kelly</span><span class="cr-val">${(kFull*100).toFixed(1)}%</span></div>
+    <div class="cr-row"><span class="cr-lbl">Fractional (${(kf*100).toFixed(0)}%)</span><span class="cr-val">${(kf*kFull*100).toFixed(1)}%</span></div>
+    <hr class="cr-divider">
+    <div class="cr-row"><span class="cr-lbl">Einsatz</span><span class="cr-val" style="color:${bc}">$${bet.toFixed(2)}</span></div>
+    <div class="cr-row"><span class="cr-lbl">Erw. Gewinn</span><span class="cr-val" style="color:${expG>=0?'#22c55e':'#ef4444'}">$${expG.toFixed(2)}</span></div>
+    <div class="cr-row"><span class="cr-lbl">ROI</span><span class="cr-val" style="color:${roi>=0?'#22c55e':'#ef4444'}">${roi.toFixed(1)}%</span></div>
+    ${bet===0 ? '<div style="color:#ef4444;font-size:11px;text-align:center;margin-top:6px;">Kein Trade — Edge zu gering</div>' : ''}
+  `;
+}
+
+// ── Init ──────────────────────────────────────────────────
+fetchState();
+startCountdown();
+calcKelly();
+// Alle 5 Minuten neu laden
+setInterval(fetchState, 5 * 60 * 1000);
+</script>
+</body>
+</html>
