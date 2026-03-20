@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polymarket Algorithmus</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, sans-serif; background: #0a0c14; color: #e2e8f0; min-height: 100vh; }
+
+/* Header */
+.header {
+  background: #111320;
+  border-bottom: 1px solid #1e2235;
+  padding: 18px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky; top: 0; z-index: 10;
+}
+.logo { font-size: 20px; font-weight: 800; color: #fff; }
+.logo span { color: #6366f1; }
+.badge {
+  padding: 5px 14px; border-radius: 20px;
+  font-size: 12px; font-weight: 700;
+  background: #22c55e22; color: #22c55e;
+  border: 1px solid #22c55e44;
+}
+
+/* Fortschrittsbalken */
+.bar { height: 3px; background: #1a1d2e; }
+.bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #a78bfa);
+  transition: width 1s linear;
+}
+
+/* Layout */
+.wrap { max-width: 1100px; margin: 0 auto; padding: 28px 20px; }
+
+/* Info-Leiste */
+.info { font-size: 12px; color: #475569; margin-bottom: 24px; text-align: center; }
+.info b { color: #94a3b8; }
+
+/* Karten oben */
+.karten { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+@media(max-width:700px){ .karten { grid-template-columns: repeat(2,1fr); } }
+.karte {
+  background: #111320;
+  border: 1px solid #1e2235;
+  border-radius: 14px;
+  padding: 20px;
+  position: relative; overflow: hidden;
+}
+.karte::after {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.karte.lila::after  { background: #6366f1; }
+.karte.gruen::after { background: #22c55e; }
+.karte.gelb::after  { background: #f59e0b; }
+.karte.pink::after  { background: #ec4899; }
+.karte .label { font-size: 11px; color: #475569; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 10px; }
+.karte .wert  { font-size: 28px; font-weight: 800; color: #fff; }
+.karte.gruen .wert { color: #22c55e; }
+.karte.gelb  .wert { color: #f59e0b; }
+.karte.pink  .wert { color: #ec4899; }
+
+/* Abschnitt-Titel */
+.titel { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 14px; margin-top: 8px; }
+.titel small { font-size: 12px; color: #475569; font-weight: 400; margin-left: 8px; }
+
+/* Empfehlungs-Karten */
+.emp-liste { display: flex; flex-direction: column; gap: 12px; margin-bottom: 32px; }
+.emp {
+  background: #111320;
+  border: 1px solid #1e2235;
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  transition: border-color .15s;
+}
+.emp:hover { border-color: #6366f1; }
+.emp-frage { font-size: 14px; color: #e2e8f0; line-height: 1.5; margin-bottom: 8px; font-weight: 600; }
+.emp-meta  { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tag {
+  padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+}
+.tag-markt  { background: #1e2235; color: #64748b; }
+.tag-modell { background: #6366f122; color: #a78bfa; border: 1px solid #6366f133; }
+.tag-edge-pos { background: #22c55e22; color: #22c55e; border: 1px solid #22c55e33; }
+.tag-edge-neg { background: #ef444422; color: #ef4444; border: 1px solid #ef444433; }
+.tag-tage   { background: #1e2235; color: #475569; }
+
+.emp-rechts { text-align: right; }
+.richtung {
+  font-size: 13px; font-weight: 800; padding: 6px 14px;
+  border-radius: 8px; display: inline-block; margin-bottom: 8px;
+}
+.ja   { background: #22c55e22; color: #22c55e; border: 1px solid #22c55e44; }
+.nein { background: #ef444422; color: #ef4444; border: 1px solid #ef444444; }
+.emp-einsatz { font-size: 22px; font-weight: 800; color: #fff; }
+.emp-gewinn  { font-size: 11px; color: #475569; margin-top: 2px; }
+.emp-gewinn b { color: #22c55e; }
+
+/* Leer-Zustand */
+.leer { text-align: center; padding: 48px; color: #334155; font-size: 14px; }
+
+/* Alle Märkte Tabelle */
+.tabelle-wrap {
+  background: #111320;
+  border: 1px solid #1e2235;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.t-kopf {
+  display: grid;
+  grid-template-columns: 2.5fr 80px 80px 80px 90px;
+  padding: 12px 20px;
+  background: #0d0f1a;
+  border-bottom: 1px solid #1e2235;
+}
+.t-kopf span { font-size: 10px; color: #334155; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 700; }
+.t-kopf span:not(:first-child) { text-align: center; }
+.zeile {
+  display: grid;
+  grid-template-columns: 2.5fr 80px 80px 80px 90px;
+  padding: 13px 20px;
+  border-bottom: 1px solid #0e1019;
+  align-items: center;
+  font-size: 13px;
+  transition: background .1s;
+}
+.zeile:last-child { border-bottom: none; }
+.zeile:hover { background: #14172200; }
+.zeile .frage { color: #94a3b8; line-height: 1.4; }
+.zeile .zelle { text-align: center; color: #64748b; }
+.zeile .zelle.pos { color: #22c55e; font-weight: 700; }
+.zeile .zelle.neg { color: #ef4444; font-weight: 700; }
+
+/* Lade-Spinner */
+.spinner { text-align: center; padding: 60px; color: #334155; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">Poly<span>Algo</span></div>
+  <div id="badge" class="badge">Lädt...</div>
+</div>
+<div class="bar"><div class="bar-fill" id="balken" style="width:100%"></div></div>
+
+<div class="wrap">
+  <div class="info">
+    Letztes Update: <b id="letztes">—</b> &nbsp;·&nbsp;
+    Nächstes Update: <b id="naechstes">—</b> &nbsp;·&nbsp;
+    Datenquelle: <b id="quelle">—</b>
+  </div>
+
+  <!-- Karten -->
+  <div class="karten">
+    <div class="karte lila">
+      <div class="label">Kapital</div>
+      <div class="wert" id="kapital">$—</div>
+    </div>
+    <div class="karte pink">
+      <div class="label">Empfehlungen</div>
+      <div class="wert" id="anz-emp">—</div>
+    </div>
+    <div class="karte gelb">
+      <div class="label">Gesamt-Einsatz</div>
+      <div class="wert" id="einsatz">$—</div>
+    </div>
+    <div class="karte gruen">
+      <div class="label">Erwart. Gewinn</div>
+      <div class="wert" id="gewinn">$—</div>
+    </div>
+  </div>
+
+  <!-- Empfehlungen -->
+  <div class="titel">💡 Was du jetzt tun kannst <small>sortiert nach bestem Vorteil</small></div>
+  <div class="emp-liste" id="emp-liste">
+    <div class="spinner">Daten werden geladen...</div>
+  </div>
+
+  <!-- Alle Märkte -->
+  <div class="titel">📊 Alle Märkte <small id="markt-anzahl"></small></div>
+  <div class="tabelle-wrap">
+    <div class="t-kopf">
+      <span>Markt</span>
+      <span>Markt %</span>
+      <span>Algo %</span>
+      <span>Vorteil</span>
+      <span>Einsatz</span>
+    </div>
+    <div id="tabelle">
+      <div class="spinner">Daten werden geladen...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let updateSek = 300;
+let verbleibend = 300;
+let startZeit = Date.now();
+
+function lade() {
+  fetch("/api/daten")
+    .then(r => r.json())
+    .then(d => {
+      // Info-Leiste
+      document.getElementById("letztes").textContent    = d.letztes_update    || "—";
+      document.getElementById("naechstes").textContent  = d.naechstes_update  || "—";
+      document.getElementById("quelle").textContent     = d.quelle            || "—";
+      document.getElementById("badge").textContent      = d.status === "OK" ? "Live" : d.status;
+
+      // Karten
+      document.getElementById("kapital").textContent   = "$" + (d.bankroll    || 0);
+      document.getElementById("anz-emp").textContent   =        (d.empfehlungen || []).length;
+      document.getElementById("einsatz").textContent   = "$" + (d.gesamt_einsatz || 0);
+      document.getElementById("gewinn").textContent    = "$" + (d.gesamt_gewinn  || 0);
+
+      // Empfehlungen
+      const empEl = document.getElementById("emp-liste");
+      const emps  = d.empfehlungen || [];
+      if (emps.length === 0) {
+        empEl.innerHTML = `<div class="leer">Keine Empfehlungen gerade — Algorithmus sucht nach Vorteilen...</div>`;
+      } else {
+        empEl.innerHTML = emps.slice(0, 8).map(e => `
+          <div class="emp">
+            <div>
+              <div class="emp-frage">${e.frage}</div>
+              <div class="emp-meta">
+                <span class="tag tag-markt">Markt: ${e.markt_p}%</span>
+                <span class="tag tag-modell">Algo schätzt: ${e.modell_p}%</span>
+                <span class="tag ${e.edge >= 0 ? 'tag-edge-pos' : 'tag-edge-neg'}">
+                  Vorteil: ${e.edge > 0 ? '+' : ''}${e.edge}%
+                </span>
+                <span class="tag tag-tage">${e.tage} Tage</span>
+              </div>
+            </div>
+            <div class="emp-rechts">
+              <div class="richtung ${e.richtung === 'JA' ? 'ja' : 'nein'}">
+                ${e.richtung === 'JA' ? '✅ JA wetten' : '❌ NEIN wetten'}
+              </div>
+              <div class="emp-einsatz">$${e.einsatz}</div>
+              <div class="emp-gewinn">Erw. Gewinn: <b>+$${e.erw_gewinn}</b></div>
+            </div>
+          </div>
+        `).join("");
+      }
+
+      // Tabelle
+      const tab = document.getElementById("tabelle");
+      const alle = d.alle_maerkte || [];
+      document.getElementById("markt-anzahl").textContent = alle.length + " Märkte analysiert";
+      if (alle.length === 0) {
+        tab.innerHTML = `<div class="leer">Keine Märkte gefunden.</div>`;
+      } else {
+        tab.innerHTML = alle.map(e => `
+          <div class="zeile">
+            <div class="frage">${e.frage}</div>
+            <div class="zelle">${e.markt_p}%</div>
+            <div class="zelle">${e.modell_p}%</div>
+            <div class="zelle ${e.edge >= 0 ? 'pos' : 'neg'}">${e.edge > 0 ? '+' : ''}${e.edge}%</div>
+            <div class="zelle">${e.einsatz > 0 ? '$' + e.einsatz : '—'}</div>
+          </div>
+        `).join("");
+      }
+
+      // Timer zurücksetzen
+      startZeit   = Date.now();
+      verbleibend = 300;
+    })
+    .catch(() => {
+      document.getElementById("badge").textContent = "Verbindungsfehler";
+    });
+}
+
+// Countdown-Balken
+function tickBalken() {
+  const vergangen = (Date.now() - startZeit) / 1000;
+  const rest      = Math.max(0, 300 - vergangen);
+  const pct       = (rest / 300) * 100;
+  document.getElementById("balken").style.width = pct + "%";
+  setTimeout(tickBalken, 1000);
+}
+
+// Alle 5 Minuten neu laden
+lade();
+setInterval(lade, 300000);
+tickBalken();
+</script>
+</body>
+</html>
